@@ -9,7 +9,6 @@
 //! This basic example shows how to capture packets and later do something with the TCP ones
 //!
 //! ```rust,ignore
-//!
 //! use wiretap;
 //! use std::{thread, time};
 //! 
@@ -36,7 +35,6 @@
 //! This basic example shows how to process packets with a callback as they are captured
 //!
 //! ```rust,ignore
-//!
 //! use wiretap;
 //! use std::{thread, time};
 //!
