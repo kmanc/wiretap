@@ -79,13 +79,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Marker for PacketCapture struct
-pub struct Uninitialized;
+struct Uninitialized;
 /// Marker for PacketCapture struct
-pub struct Initialized;
+struct Initialized;
 /// Marker for PacketCapture struct
-pub struct Started;
+struct Started;
 /// Marker for PacketCapture struct
-pub struct Completed;
+struct Completed;
 
 /// Basic PacketCapture type
 ///
