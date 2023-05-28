@@ -65,9 +65,6 @@
 //! }
 //! ```
 
-pub use pnet::packet::ethernet::EthernetPacket;
-pub use pnet::packet::ipv4::Ipv4Packet;
-pub use pnet::packet::tcp::TcpPacket;
 pub use pnet::packet::Packet;
 
 use pnet::datalink::Channel::Ethernet;
@@ -77,6 +74,33 @@ use std::error::Error;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+
+#[derive(Debug)]
+pub struct EthernetFrame<'a>(pnet::packet::ethernet::EthernetPacket<'a>);
+
+impl<'a> From<pnet::packet::ethernet::EthernetPacket<'a>> for EthernetFrame<'a> {
+    fn from(ethernet_frame: pnet::packet::ethernet::EthernetPacket<'a>) -> Self {
+        EthernetFrame(ethernet_frame)
+    }
+}
+
+#[derive(Debug)]
+pub struct Ipv4Packet<'a>(pnet::packet::ipv4::Ipv4Packet<'a>);
+
+impl<'a> From<pnet::packet::ipv4::Ipv4Packet<'a>> for Ipv4Packet<'a> {
+    fn from(ipv4_packet: pnet::packet::ipv4::Ipv4Packet<'a>) -> Self {
+        Ipv4Packet(ipv4_packet)
+    }
+}
+
+#[derive(Debug)]
+pub struct TcpSegment<'a>(pnet::packet::tcp::TcpPacket<'a>);
+
+impl<'a> From<pnet::packet::tcp::TcpPacket<'a>> for TcpSegment<'a> {
+    fn from(ipv4_packet: pnet::packet::tcp::TcpPacket<'a>) -> Self {
+        TcpSegment(ipv4_packet)
+    }
+}
 
 /// Marker for PacketCapture struct
 struct Uninitialized;
@@ -207,29 +231,29 @@ impl PacketCapture<Completed> {
     }
 
     /// Results returned as ethernet frames
-    pub fn results_as_ethernet(&self) -> Vec<EthernetPacket> {
+    pub fn results_as_ethernet(&self) -> Vec<EthernetFrame> {
         self.results_raw()
             .into_iter()
-            .filter(|v| EthernetPacket::new(v).is_some())
-            .map(|v| EthernetPacket::owned(v).unwrap())
-            .collect::<Vec<EthernetPacket>>()
+            .filter(|v| pnet::packet::ethernet::EthernetPacket::new(v).is_some())
+            .map(|v| EthernetFrame::from(pnet::packet::ethernet::EthernetPacket::owned(v).unwrap()))
+            .collect::<Vec<EthernetFrame>>()
     }
 
     /// Results returned as ipv4 packets
     pub fn results_as_ipv4(&self) -> Vec<Ipv4Packet> {
         self.results_as_ethernet()
             .into_iter()
-            .filter(|ethernet_packet| Ipv4Packet::new(ethernet_packet.payload()).is_some())
-            .map(|ethernet_packet| Ipv4Packet::owned(ethernet_packet.payload().to_vec()).unwrap())
+            .filter(|ethernet_frame| pnet::packet::ipv4::Ipv4Packet::new(ethernet_frame.0.payload()).is_some())
+            .map(|ethernet_frame| Ipv4Packet::from(pnet::packet::ipv4::Ipv4Packet::owned(ethernet_frame.0.payload().to_vec()).unwrap()))
             .collect::<Vec<Ipv4Packet>>()
     }
 
     /// Results returned as tcp segments
-    pub fn results_as_tcp(&self) -> Vec<TcpPacket> {
+    pub fn results_as_tcp(&self) -> Vec<TcpSegment> {
         self.results_as_ipv4()
             .into_iter()
-            .filter(|ipv4_packet| TcpPacket::new(ipv4_packet.payload()).is_some())
-            .map(|ipv4_packet| TcpPacket::owned(ipv4_packet.payload().to_vec()).unwrap())
-            .collect::<Vec<TcpPacket>>()
+            .filter(|ipv4_packet| pnet::packet::tcp::TcpPacket::new(ipv4_packet.0.payload()).is_some())
+            .map(|ipv4_packet| TcpSegment::from(pnet::packet::tcp::TcpPacket::owned(ipv4_packet.0.payload().to_vec()).unwrap()))
+            .collect::<Vec<TcpSegment>>()
     }
 }
