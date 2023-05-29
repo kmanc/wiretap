@@ -249,7 +249,7 @@ impl TcpSegment<'_> {
         TcpSegment::from(pnet::packet::tcp::TcpPacket::owned(self.packet().to_vec()).unwrap())
     }
 
-    fn is_answered_by<'a>(&self, other: &TcpSegment<'a>) -> bool {
+    fn is_answered_by(&self, other: &TcpSegment<'_>) -> bool {
         self.get_source() == other.get_destination()
             && self.get_destination() == other.get_source()
             && self.get_sequence() as usize + self.payload().len()
