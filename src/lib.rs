@@ -102,9 +102,9 @@ impl EthernetFrame<'_> {
     }
 }
 
-/// Wrapper around a vector of EthernetFrame for additional functionality
+/// Wrapper around an Arc<Slice> of EthernetFrame for additional functionality
 #[derive(Debug)]
-pub struct EthernetFrameCollection<'a>(Vec<EthernetFrame<'a>>);
+pub struct EthernetFrameCollection<'a>(Arc<[EthernetFrame<'a>]>);
 
 impl<'a> FromIterator<EthernetFrame<'a>> for EthernetFrameCollection<'a> {
     fn from_iter<I: IntoIterator<Item = EthernetFrame<'a>>>(iter: I) -> Self {
@@ -112,30 +112,11 @@ impl<'a> FromIterator<EthernetFrame<'a>> for EthernetFrameCollection<'a> {
     }
 }
 
-impl<'a> IntoIterator for EthernetFrameCollection<'a> {
-    type Item = EthernetFrame<'a>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
 impl<'a> Deref for EthernetFrameCollection<'a> {
-    type Target = Vec<EthernetFrame<'a>>;
+    type Target = Arc<[EthernetFrame<'a>]>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl<'a> EthernetFrameCollection<'a> {
-    fn new() -> EthernetFrameCollection<'a> {
-        EthernetFrameCollection(Vec::new())
-    }
-
-    fn add(&mut self, elem: EthernetFrame<'a>) {
-        self.0.push(elem);
     }
 }
 
@@ -163,9 +144,9 @@ impl Ipv4Packet<'_> {
     }
 }
 
-/// Wrapper around a vector of Ipv4Packet for additional functionality
+/// Wrapper around an Arc<Slice> of Ipv4Packet for additional functionality
 #[derive(Debug)]
-pub struct Ipv4PacketCollection<'a>(Vec<Ipv4Packet<'a>>);
+pub struct Ipv4PacketCollection<'a>(Arc<[Ipv4Packet<'a>]>);
 
 impl<'a> FromIterator<Ipv4Packet<'a>> for Ipv4PacketCollection<'a> {
     fn from_iter<I: IntoIterator<Item = Ipv4Packet<'a>>>(iter: I) -> Self {
@@ -173,17 +154,8 @@ impl<'a> FromIterator<Ipv4Packet<'a>> for Ipv4PacketCollection<'a> {
     }
 }
 
-impl<'a> IntoIterator for Ipv4PacketCollection<'a> {
-    type Item = Ipv4Packet<'a>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
 impl<'a> Deref for Ipv4PacketCollection<'a> {
-    type Target = Vec<Ipv4Packet<'a>>;
+    type Target = Arc<[Ipv4Packet<'a>]>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -191,20 +163,12 @@ impl<'a> Deref for Ipv4PacketCollection<'a> {
 }
 
 impl<'a> Ipv4PacketCollection<'a> {
-    fn new() -> Ipv4PacketCollection<'a> {
-        Ipv4PacketCollection(Vec::new())
-    }
-
-    fn add(&mut self, elem: Ipv4Packet<'a>) {
-        self.0.push(elem);
-    }
-
     pub fn filter_only_host(&'a self, host: Ipv4Addr) -> Ipv4PacketCollection<'a> {
         Ipv4PacketCollection(
             self.iter()
                 .filter(|p| p.get_source() == host || p.get_destination() == host)
                 .map(|p| p.create_clone())
-                .collect::<Vec<Ipv4Packet>>()
+                .collect::<Arc<[Ipv4Packet]>>()
         )
     }
 }
@@ -245,9 +209,9 @@ impl TcpSegment<'_> {
     }
 }
 
-/// Wrapper around a vector of TcpSegment for additional functionality
+/// Wrapper around an Arc<Slice> of TcpSegment for additional functionality
 #[derive(Debug)]
-pub struct TcpSegmentCollection<'a>(Vec<TcpSegment<'a>>);
+pub struct TcpSegmentCollection<'a>(Arc<[TcpSegment<'a>]>);
 
 impl<'a> FromIterator<TcpSegment<'a>> for TcpSegmentCollection<'a> {
     fn from_iter<I: IntoIterator<Item = TcpSegment<'a>>>(iter: I) -> Self {
@@ -255,17 +219,8 @@ impl<'a> FromIterator<TcpSegment<'a>> for TcpSegmentCollection<'a> {
     }
 }
 
-impl<'a> IntoIterator for TcpSegmentCollection<'a> {
-    type Item = TcpSegment<'a>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
 impl<'a> Deref for TcpSegmentCollection<'a> {
-    type Target = Vec<TcpSegment<'a>>;
+    type Target = Arc<[TcpSegment<'a>]>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -289,14 +244,6 @@ impl<'a> From<Ipv4PacketCollection<'a>> for TcpSegmentCollection<'a> {
 }
 
 impl<'a> TcpSegmentCollection<'a> {
-    fn new() -> TcpSegmentCollection<'a> {
-        TcpSegmentCollection(Vec::new())
-    }
-
-    fn add(&mut self, elem: TcpSegment<'a>) {
-        self.0.push(elem);
-    }
-
     /// Get a collection of TcpSegment with TCP payloads
     ///
     /// Returns a new TcpSegmentCollection containing only the segments that have a TCP payload
@@ -305,7 +252,7 @@ impl<'a> TcpSegmentCollection<'a> {
             self.iter()
                 .filter(|s| s.has_payload())
                 .map(|s| s.create_clone())
-                .collect::<Vec<TcpSegment>>(),
+                .collect::<Arc<[TcpSegment]>>(),
         )
     }
 
@@ -315,7 +262,7 @@ impl<'a> TcpSegmentCollection<'a> {
     pub fn find_challenge_response_pairs(
         &'a mut self,
     ) -> (TcpChallengeResponseCollection<'a>, TcpSegmentCollection<'a>) {
-        let mut matched = TcpChallengeResponseCollection::new();
+        let mut matched = Vec::new();
         let mut unmatched = self
             .iter()
             .map(|s| s.create_clone())
@@ -343,7 +290,7 @@ impl<'a> TcpSegmentCollection<'a> {
                 i += 1;
             }
         }
-        (matched, TcpSegmentCollection(unmatched))
+        (TcpChallengeResponseCollection(matched.into()), TcpSegmentCollection(unmatched.into()))
     }
 }
 
@@ -363,33 +310,18 @@ impl<'a> TcpChallengeResponse<'a> {
     }
 }
 
-/// Wrapper around a vector of TcpChallengeResponse for additional functionality
+/// Wrapper around an Arc<Slice> of TcpChallengeResponse for additional functionality
 #[derive(Debug)]
-pub struct TcpChallengeResponseCollection<'a>(Vec<TcpChallengeResponse<'a>>);
+pub struct TcpChallengeResponseCollection<'a>(Arc<[TcpChallengeResponse<'a>]>);
 
 impl<'a> FromIterator<TcpChallengeResponse<'a>> for TcpChallengeResponseCollection<'a> {
     fn from_iter<I: IntoIterator<Item = TcpChallengeResponse<'a>>>(iter: I) -> Self {
-        let mut c = TcpChallengeResponseCollection::new();
-
-        for i in iter {
-            c.add(i);
-        }
-
-        c
-    }
-}
-
-impl<'a> IntoIterator for TcpChallengeResponseCollection<'a> {
-    type Item = TcpChallengeResponse<'a>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        TcpChallengeResponseCollection(iter.into_iter().collect())
     }
 }
 
 impl<'a> Deref for TcpChallengeResponseCollection<'a> {
-    type Target = Vec<TcpChallengeResponse<'a>>;
+    type Target = Arc<[TcpChallengeResponse<'a>]>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -399,16 +331,6 @@ impl<'a> Deref for TcpChallengeResponseCollection<'a> {
 impl<'a> DerefMut for TcpChallengeResponseCollection<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
-    }
-}
-
-impl<'a> TcpChallengeResponseCollection<'a> {
-    fn new() -> TcpChallengeResponseCollection<'a> {
-        TcpChallengeResponseCollection(Vec::new())
-    }
-
-    fn add(&mut self, elem: TcpChallengeResponse<'a>) {
-        self.0.push(elem);
     }
 }
 
