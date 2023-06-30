@@ -108,13 +108,7 @@ pub struct EthernetFrameCollection<'a>(Vec<EthernetFrame<'a>>);
 
 impl<'a> FromIterator<EthernetFrame<'a>> for EthernetFrameCollection<'a> {
     fn from_iter<I: IntoIterator<Item = EthernetFrame<'a>>>(iter: I) -> Self {
-        let mut c = EthernetFrameCollection::new();
-
-        for i in iter {
-            c.add(i);
-        }
-
-        c
+        EthernetFrameCollection(iter.into_iter().collect())
     }
 }
 
@@ -175,13 +169,7 @@ pub struct Ipv4PacketCollection<'a>(Vec<Ipv4Packet<'a>>);
 
 impl<'a> FromIterator<Ipv4Packet<'a>> for Ipv4PacketCollection<'a> {
     fn from_iter<I: IntoIterator<Item = Ipv4Packet<'a>>>(iter: I) -> Self {
-        let mut c = Ipv4PacketCollection::new();
-
-        for i in iter {
-            c.add(i);
-        }
-
-        c
+        Ipv4PacketCollection(iter.into_iter().collect())
     }
 }
 
@@ -263,13 +251,7 @@ pub struct TcpSegmentCollection<'a>(Vec<TcpSegment<'a>>);
 
 impl<'a> FromIterator<TcpSegment<'a>> for TcpSegmentCollection<'a> {
     fn from_iter<I: IntoIterator<Item = TcpSegment<'a>>>(iter: I) -> Self {
-        let mut c = TcpSegmentCollection::new();
-
-        for i in iter {
-            c.add(i);
-        }
-
-        c
+        TcpSegmentCollection(iter.into_iter().collect())
     }
 }
 
