@@ -25,7 +25,7 @@
 //!     let output = pc.results_as_tcp();
 //!     // Do something with them
 //!     println!("Captured {} TCP packets", output.len());
-//!     for out in output {
+//!     for out in output.iter() {
 //!         println!("{:?}", out.payload());
 //! }
 //! ```
@@ -102,7 +102,7 @@ impl EthernetFrame<'_> {
     }
 }
 
-/// Wrapper around an Arc<Slice> of EthernetFrame for additional functionality
+/// Wrapper around an Arc<[EthernetFrame]> for additional functionality
 #[derive(Debug)]
 pub struct EthernetFrameCollection<'a>(Arc<[EthernetFrame<'a>]>);
 
@@ -144,7 +144,7 @@ impl Ipv4Packet<'_> {
     }
 }
 
-/// Wrapper around an Arc<Slice> of Ipv4Packet for additional functionality
+/// Wrapper around an Arc<[Ipv4Packet]> for additional functionality
 #[derive(Debug)]
 pub struct Ipv4PacketCollection<'a>(Arc<[Ipv4Packet<'a>]>);
 
@@ -168,7 +168,7 @@ impl<'a> Ipv4PacketCollection<'a> {
             self.iter()
                 .filter(|p| p.get_source() == host || p.get_destination() == host)
                 .map(|p| p.create_clone())
-                .collect::<Arc<[Ipv4Packet]>>()
+                .collect::<Arc<[Ipv4Packet]>>(),
         )
     }
 }
@@ -209,7 +209,7 @@ impl TcpSegment<'_> {
     }
 }
 
-/// Wrapper around an Arc<Slice> of TcpSegment for additional functionality
+/// Wrapper around an Arc<[TcpSegment]> for additional functionality
 #[derive(Debug)]
 pub struct TcpSegmentCollection<'a>(Arc<[TcpSegment<'a>]>);
 
@@ -290,7 +290,10 @@ impl<'a> TcpSegmentCollection<'a> {
                 i += 1;
             }
         }
-        (TcpChallengeResponseCollection(matched.into()), TcpSegmentCollection(unmatched.into()))
+        (
+            TcpChallengeResponseCollection(matched.into()),
+            TcpSegmentCollection(unmatched.into()),
+        )
     }
 }
 
@@ -310,7 +313,7 @@ impl<'a> TcpChallengeResponse<'a> {
     }
 }
 
-/// Wrapper around an Arc<Slice> of TcpChallengeResponse for additional functionality
+/// Wrapper around an Arc<[TcpChallengeResponse]> for additional functionality
 #[derive(Debug)]
 pub struct TcpChallengeResponseCollection<'a>(Arc<[TcpChallengeResponse<'a>]>);
 
@@ -348,7 +351,8 @@ pub struct Completed;
 /// Marker as PhantomData allow compile-time checking of struct use
 pub struct PacketCapture<State> {
     interface: NetworkInterface,
-    results: Arc<Mutex<Vec<Vec<u8>>>>,
+    packets: Arc<Mutex<Vec<Vec<u8>>>>,
+    results: Arc<[Vec<u8>]>,
     state: PhantomData<State>,
     stop_signal: Arc<AtomicBool>,
 }
@@ -366,7 +370,8 @@ impl PacketCapture<Uninitialized> {
 
         Ok(PacketCapture {
             interface,
-            results: Arc::new(Mutex::new(vec![])),
+            packets: Arc::new(Mutex::new(vec![])),
+            results: Arc::new([]),
             state: PhantomData,
             stop_signal: Arc::new(AtomicBool::new(false)),
         })
@@ -386,13 +391,13 @@ impl PacketCapture<Initialized> {
             Ok(_) => panic!("Non-ethernet channel created"),
             Err(e) => panic!("Could not create channel using interface: {e}"),
         };
-        let results = Arc::clone(&self.results);
+        let packets = Arc::clone(&self.packets);
 
         rayon::spawn(move || {
             while !stop_signal.load(Ordering::Relaxed) {
                 match rx.next() {
                     Ok(packet) => {
-                        results.lock().unwrap().push(packet.to_owned());
+                        packets.lock().unwrap().push(packet.to_owned());
                     }
                     Err(e) => panic!("Could not read packet: {e}"),
                 }
@@ -401,6 +406,7 @@ impl PacketCapture<Initialized> {
 
         PacketCapture {
             interface: self.interface.clone(),
+            packets: self.packets.clone(),
             results: self.results.clone(),
             state: PhantomData,
             stop_signal: self.stop_signal.clone(),
@@ -435,6 +441,7 @@ impl PacketCapture<Initialized> {
 
         PacketCapture {
             interface: self.interface.clone(),
+            packets: self.packets.clone(),
             results: self.results.clone(),
             state: PhantomData,
             stop_signal: self.stop_signal.clone(),
@@ -451,7 +458,15 @@ impl PacketCapture<Started> {
         self.stop_signal.store(true, Ordering::Relaxed);
         PacketCapture {
             interface: self.interface.clone(),
-            results: self.results.clone(),
+            packets: self.packets.clone(),
+            results: Arc::from(
+                self.packets
+                    .lock()
+                    .unwrap()
+                    .clone()
+                    .into_iter()
+                    .collect::<Vec<_>>(),
+            ),
             state: PhantomData,
             stop_signal: self.stop_signal.clone(),
         }
@@ -461,23 +476,27 @@ impl PacketCapture<Started> {
 /// Completed PacketCaptures return results in various formats
 impl PacketCapture<Completed> {
     /// Results returned as raw vectors of bytes
-    pub fn results_raw(&self) -> Vec<Vec<u8>> {
-        self.results.lock().unwrap().clone()
+    pub fn results_raw(&self) -> Arc<[Vec<u8>]> {
+        self.results.clone()
     }
 
     /// Results returned as ethernet frames
     pub fn results_as_ethernet(&self) -> EthernetFrameCollection {
         self.results_raw()
-            .into_iter()
+            .iter()
             .filter(|v| pnet::packet::ethernet::EthernetPacket::new(v).is_some())
-            .map(|v| EthernetFrame::from(pnet::packet::ethernet::EthernetPacket::owned(v).unwrap()))
+            .map(|v| {
+                EthernetFrame::from(
+                    pnet::packet::ethernet::EthernetPacket::owned(v.to_vec()).unwrap(),
+                )
+            })
             .collect::<EthernetFrameCollection>()
     }
 
     /// Results returned as ipv4 packets
     pub fn results_as_ipv4(&self) -> Ipv4PacketCollection {
         self.results_as_ethernet()
-            .into_iter()
+            .iter()
             .filter(|ethernet_frame| {
                 pnet::packet::ipv4::Ipv4Packet::new(ethernet_frame.payload()).is_some()
             })
@@ -493,7 +512,7 @@ impl PacketCapture<Completed> {
     /// Results returned as tcp segments
     pub fn results_as_tcp(&self) -> TcpSegmentCollection {
         self.results_as_ipv4()
-            .into_iter()
+            .iter()
             .filter(|ipv4_packet| {
                 pnet::packet::tcp::TcpPacket::new(ipv4_packet.payload()).is_some()
             })
