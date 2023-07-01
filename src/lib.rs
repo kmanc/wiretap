@@ -490,9 +490,9 @@ impl PacketCapture<Completed> {
     pub fn results_as_ipv4(&self) -> Ipv4PacketCollection {
         self.results_as_ethernet()
             .iter()
-            .filter(|e_frame| pnet_Ipv4Packet::new(e_frame.payload()).is_some())
-            .map(|e_frame| {
-                Ipv4Packet::from(pnet_Ipv4Packet::owned(e_frame.payload().to_vec()).unwrap())
+            .filter(|ethernet_frame| pnet_Ipv4Packet::new(ethernet_frame.payload()).is_some())
+            .map(|ethernet_frame| {
+                Ipv4Packet::from(pnet_Ipv4Packet::owned(ethernet_frame.payload().to_vec()).unwrap())
             })
             .collect::<Ipv4PacketCollection>()
     }
@@ -501,9 +501,9 @@ impl PacketCapture<Completed> {
     pub fn results_as_tcp(&self) -> TcpSegmentCollection {
         self.results_as_ipv4()
             .iter()
-            .filter(|i_packet| pnet_TcpPacket::new(i_packet.payload()).is_some())
-            .map(|i_packet| {
-                TcpSegment::from(pnet_TcpPacket::owned(i_packet.payload().to_vec()).unwrap())
+            .filter(|ipv4_packet| pnet_TcpPacket::new(ipv4_packet.payload()).is_some())
+            .map(|ipv4_packet| {
+                TcpSegment::from(pnet_TcpPacket::owned(ipv4_packet.payload().to_vec()).unwrap())
             })
             .collect::<TcpSegmentCollection>()
     }
