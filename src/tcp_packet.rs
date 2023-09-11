@@ -106,8 +106,13 @@ impl<'a> TcpSegmentCollection<'a> {
                         challenge.create_clone(),
                         candidate.create_clone(),
                     ));
-                    unmatched.remove(i);
-                    unmatched.remove(j);
+                    if j > i {
+                        unmatched.remove(j);
+                        unmatched.remove(i);
+                    } else {
+                        unmatched.remove(i);
+                        unmatched.remove(j);
+                    }
                     found_match = true;
                     break;
                 }
