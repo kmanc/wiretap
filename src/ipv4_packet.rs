@@ -1,5 +1,5 @@
-use pnet::packet::Packet;
 use pnet::packet::ipv4::Ipv4Packet as pnet_Ipv4Packet;
+use pnet::packet::Packet;
 use std::net::Ipv4Addr;
 use std::ops::Deref;
 use std::sync::Arc;

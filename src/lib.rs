@@ -14,7 +14,7 @@
 //!
 //! fn main() {
 //!     // Create a new PacketCapture with the "lo" interface
-//!     let pc = wiretap::PacketCapture::new("lo").unwrap();
+//!     let pc = wiretap::PacketCapture::new_from_interface("lo").unwrap();
 //!     // Start a capture on that interface
 //!     let pc = pc.start_capture();
 //!     // Do something useful, probably
@@ -54,8 +54,8 @@
 //! }
 //!
 //! fn main() {
-//!     // Create a new PacketCapture with the "lo" interface
-//!     let pc = wiretap::PacketCapture::new("lo").unwrap();
+//!     // Create a new PacketCapture with the default interface
+//!     let pc = wiretap::PacketCapture::new_with_default().unwrap();
 //!     // Start a capture on that interface
 //!     let pc = pc.start_live_process(print_to_from);
 //!     // Stuff happens
@@ -89,6 +89,7 @@ use std::sync::{Arc, Mutex};
 /// Marker for PacketCapture struct
 pub struct Uninitialized;
 /// Marker for PacketCapture struct
+#[derive(Debug)]
 pub struct Initialized;
 /// Marker for PacketCapture struct
 pub struct Started;
@@ -98,6 +99,7 @@ pub struct Completed;
 /// Basic PacketCapture type
 ///
 /// Marker as PhantomData allow compile-time checking of struct use
+#[derive(Debug)]
 pub struct PacketCapture<State> {
     interface: NetworkInterface,
     packets: Arc<Mutex<Vec<Vec<u8>>>>,
@@ -111,11 +113,31 @@ impl PacketCapture<Uninitialized> {
     /// Create a PacketCapture
     ///
     /// Takes an interface name and returns an Initialized PacketCapture
-    pub fn new(interface_name: &str) -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
+    pub fn new_from_interface(
+        interface_name: &str,
+    ) -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
         let interface = datalink::interfaces()
             .into_iter()
             .find(|iface| iface.name == interface_name)
-            .ok_or("Could not find interface")?;
+            .ok_or(format!("Could not find interface '{interface_name}'"))?;
+
+        Ok(PacketCapture {
+            interface,
+            packets: Arc::new(Mutex::new(vec![])),
+            results: Arc::new([]),
+            state: PhantomData,
+            stop_signal: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    /// Create a PacketCapture
+    ///
+    /// Returns an Initialized PacketCapture with the default interface
+    pub fn new_with_default() -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
+        let interface = datalink::interfaces()
+            .into_iter()
+            .find(|iface| iface.is_up() && !iface.is_loopback() && !iface.ips.is_empty())
+            .ok_or("Could not determine defauly interface")?;
 
         Ok(PacketCapture {
             interface,

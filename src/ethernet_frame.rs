@@ -1,5 +1,5 @@
-use pnet::packet::Packet;
 use pnet::packet::ethernet::EthernetPacket as pnet_EthernetPacket;
+use pnet::packet::Packet;
 use std::ops::Deref;
 use std::sync::Arc;
 
