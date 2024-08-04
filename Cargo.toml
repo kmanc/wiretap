@@ -3,7 +3,7 @@ name = "wiretap"
 authors = [ "Kevin Conley <koins@duck.com>" ]
 version = "0.3.0"
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.80"
 license = "MIT"
 description = "Basic packet capture library built on parallelism"
 repository = "https://github.com/kmanc/wiretap"
@@ -13,4 +13,4 @@ keywords = [ "pcap", "networking", "packet", "sniffing", "capture" ]
 
 [dependencies]
 pnet = {version = "0"}
-rayon = {version = "1.7"}
+rayon = {version = "1"}
