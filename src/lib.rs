@@ -14,7 +14,7 @@
 //!
 //! fn main() {
 //!     // Create a new PacketCapture with the "lo" interface
-//!     let pc = wiretap::PacketCapture::new("lo").unwrap();
+//!     let pc = wiretap::PacketCapture::new_from_interface("lo").unwrap();
 //!     // Start a capture on that interface
 //!     let pc = pc.start_capture();
 //!     // Do something useful, probably
@@ -54,8 +54,8 @@
 //! }
 //!
 //! fn main() {
-//!     // Create a new PacketCapture with the "lo" interface
-//!     let pc = wiretap::PacketCapture::new("lo").unwrap();
+//!     // Create a new PacketCapture with the default interface
+//!     let pc = wiretap::PacketCapture::new_with_default().unwrap();
 //!     // Start a capture on that interface
 //!     let pc = pc.start_live_process(print_to_from);
 //!     // Stuff happens
@@ -64,6 +64,15 @@
 //!     started.stop_capture();
 //! }
 //! ```
+
+pub mod ethernet_frame;
+pub use ethernet_frame::*;
+
+pub mod ipv4_packet;
+pub use ipv4_packet::*;
+
+pub mod tcp_packet;
+pub use tcp_packet::*;
 
 pub use pnet::packet::Packet;
 
@@ -74,269 +83,13 @@ use pnet::packet::ipv4::Ipv4Packet as pnet_Ipv4Packet;
 use pnet::packet::tcp::TcpPacket as pnet_TcpPacket;
 use std::error::Error;
 use std::marker::PhantomData;
-use std::net::Ipv4Addr;
-use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-
-/// Wrapper around pnet's EthernetPacket for adding additional funcitonality
-#[derive(Debug)]
-pub struct EthernetFrame<'a>(pnet_EthernetPacket<'a>);
-
-impl<'a> From<pnet_EthernetPacket<'a>> for EthernetFrame<'a> {
-    fn from(ethernet_frame: pnet_EthernetPacket<'a>) -> Self {
-        EthernetFrame(ethernet_frame)
-    }
-}
-
-impl<'a> Deref for EthernetFrame<'a> {
-    type Target = pnet_EthernetPacket<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl EthernetFrame<'_> {
-    pub fn create_clone<'a>(&self) -> EthernetFrame<'a> {
-        EthernetFrame::from(pnet_EthernetPacket::owned(self.packet().to_vec()).unwrap())
-    }
-}
-
-/// Wrapper around an Arc<[EthernetFrame]> for additional functionality
-#[derive(Debug)]
-pub struct EthernetFrameCollection<'a>(Arc<[EthernetFrame<'a>]>);
-
-impl<'a> FromIterator<EthernetFrame<'a>> for EthernetFrameCollection<'a> {
-    fn from_iter<I: IntoIterator<Item = EthernetFrame<'a>>>(iter: I) -> Self {
-        EthernetFrameCollection(iter.into_iter().collect())
-    }
-}
-
-impl<'a> Deref for EthernetFrameCollection<'a> {
-    type Target = Arc<[EthernetFrame<'a>]>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-/// Wrapper around pnet's Ipv4Packet for adding additional funcitonality
-#[derive(Debug)]
-pub struct Ipv4Packet<'a>(pnet_Ipv4Packet<'a>);
-
-impl<'a> From<pnet_Ipv4Packet<'a>> for Ipv4Packet<'a> {
-    fn from(ipv4_packet: pnet_Ipv4Packet<'a>) -> Self {
-        Ipv4Packet(ipv4_packet)
-    }
-}
-
-impl<'a> Deref for Ipv4Packet<'a> {
-    type Target = pnet_Ipv4Packet<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Ipv4Packet<'_> {
-    pub fn create_clone<'a>(&self) -> Ipv4Packet<'a> {
-        Ipv4Packet::from(pnet_Ipv4Packet::owned(self.packet().to_vec()).unwrap())
-    }
-}
-
-/// Wrapper around an Arc<[Ipv4Packet]> for additional functionality
-#[derive(Debug)]
-pub struct Ipv4PacketCollection<'a>(Arc<[Ipv4Packet<'a>]>);
-
-impl<'a> FromIterator<Ipv4Packet<'a>> for Ipv4PacketCollection<'a> {
-    fn from_iter<I: IntoIterator<Item = Ipv4Packet<'a>>>(iter: I) -> Self {
-        Ipv4PacketCollection(iter.into_iter().collect())
-    }
-}
-
-impl<'a> Deref for Ipv4PacketCollection<'a> {
-    type Target = Arc<[Ipv4Packet<'a>]>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> Ipv4PacketCollection<'a> {
-    pub fn filter_only_host(&'a self, host: Ipv4Addr) -> Ipv4PacketCollection<'a> {
-        Ipv4PacketCollection(
-            self.iter()
-                .filter(|p| p.get_source() == host || p.get_destination() == host)
-                .map(|p| p.create_clone())
-                .collect::<Arc<[Ipv4Packet]>>(),
-        )
-    }
-}
-
-/// Wrapper around pnet's TcpPacket for adding additional funcitonality
-#[derive(Debug)]
-pub struct TcpSegment<'a>(pnet_TcpPacket<'a>);
-
-impl<'a> From<pnet_TcpPacket<'a>> for TcpSegment<'a> {
-    fn from(ipv4_packet: pnet_TcpPacket<'a>) -> Self {
-        TcpSegment(ipv4_packet)
-    }
-}
-
-impl<'a> Deref for TcpSegment<'a> {
-    type Target = pnet_TcpPacket<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl TcpSegment<'_> {
-    /// Return true if the TCP segment has a payload
-    pub fn has_payload(&self) -> bool {
-        !&self.payload().is_empty()
-    }
-
-    pub fn create_clone<'a>(&self) -> TcpSegment<'a> {
-        TcpSegment::from(pnet_TcpPacket::owned(self.packet().to_vec()).unwrap())
-    }
-
-    fn is_answered_by(&self, other: &TcpSegment<'_>) -> bool {
-        self.get_source() == other.get_destination()
-            && self.get_destination() == other.get_source()
-            && self.get_sequence() as usize + self.payload().len()
-                == other.get_acknowledgement() as usize
-    }
-}
-
-/// Wrapper around an Arc<[TcpSegment]> for additional functionality
-#[derive(Debug)]
-pub struct TcpSegmentCollection<'a>(Arc<[TcpSegment<'a>]>);
-
-impl<'a> FromIterator<TcpSegment<'a>> for TcpSegmentCollection<'a> {
-    fn from_iter<I: IntoIterator<Item = TcpSegment<'a>>>(iter: I) -> Self {
-        TcpSegmentCollection(iter.into_iter().collect())
-    }
-}
-
-impl<'a> Deref for TcpSegmentCollection<'a> {
-    type Target = Arc<[TcpSegment<'a>]>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> From<Ipv4PacketCollection<'a>> for TcpSegmentCollection<'a> {
-    fn from(ipv4_packet_collection: Ipv4PacketCollection) -> Self {
-        ipv4_packet_collection
-            .iter()
-            .filter(|ipv4_packet| pnet_TcpPacket::new(ipv4_packet.payload()).is_some())
-            .map(|ipv4_packet| {
-                TcpSegment::from(pnet_TcpPacket::owned(ipv4_packet.payload().to_vec()).unwrap())
-            })
-            .collect::<TcpSegmentCollection>()
-    }
-}
-
-impl<'a> TcpSegmentCollection<'a> {
-    /// Get a collection of TcpSegment with TCP payloads
-    ///
-    /// Returns a new TcpSegmentCollection containing only the segments that have a TCP payload
-    pub fn filter_no_payload(&'a self) -> TcpSegmentCollection<'a> {
-        TcpSegmentCollection(
-            self.iter()
-                .filter(|s| s.has_payload())
-                .map(|s| s.create_clone())
-                .collect::<Arc<[TcpSegment]>>(),
-        )
-    }
-
-    /// Couple the challenge / response pairs in a collection of TCP segments
-    ///
-    /// Returns a new TcpSegmentCollection containing only the segments that have a TCP payload
-    pub fn find_challenge_response_pairs(
-        &'a mut self,
-    ) -> (TcpChallengeResponseCollection<'a>, TcpSegmentCollection<'a>) {
-        let mut matched = Vec::new();
-        let mut unmatched = self
-            .iter()
-            .map(|s| s.create_clone())
-            .collect::<Vec<TcpSegment<'a>>>();
-        let mut i = 0;
-        while i < unmatched.len() {
-            let challenge = unmatched[i].create_clone();
-            let mut j = 0;
-            let mut found_match = false;
-            while j < unmatched.len() - 1 {
-                j += 1;
-                let candidate = unmatched[j].create_clone();
-                if challenge.is_answered_by(&candidate) {
-                    matched.push(TcpChallengeResponse::new(
-                        challenge.create_clone(),
-                        candidate.create_clone(),
-                    ));
-                    unmatched.remove(i);
-                    unmatched.remove(j);
-                    found_match = true;
-                    break;
-                }
-            }
-            if !found_match {
-                i += 1;
-            }
-        }
-        (
-            TcpChallengeResponseCollection(matched.into()),
-            TcpSegmentCollection(unmatched.into()),
-        )
-    }
-}
-
-/// Container for TCP segments where the "challenge" was answered by the "response"
-#[derive(Debug)]
-pub struct TcpChallengeResponse<'a> {
-    pub challenge: TcpSegment<'a>,
-    pub response: TcpSegment<'a>,
-}
-
-impl<'a> TcpChallengeResponse<'a> {
-    fn new(challenge: TcpSegment<'a>, response: TcpSegment<'a>) -> TcpChallengeResponse<'a> {
-        TcpChallengeResponse {
-            challenge,
-            response,
-        }
-    }
-}
-
-/// Wrapper around an Arc<[TcpChallengeResponse]> for additional functionality
-#[derive(Debug)]
-pub struct TcpChallengeResponseCollection<'a>(Arc<[TcpChallengeResponse<'a>]>);
-
-impl<'a> FromIterator<TcpChallengeResponse<'a>> for TcpChallengeResponseCollection<'a> {
-    fn from_iter<I: IntoIterator<Item = TcpChallengeResponse<'a>>>(iter: I) -> Self {
-        TcpChallengeResponseCollection(iter.into_iter().collect())
-    }
-}
-
-impl<'a> Deref for TcpChallengeResponseCollection<'a> {
-    type Target = Arc<[TcpChallengeResponse<'a>]>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> DerefMut for TcpChallengeResponseCollection<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 /// Marker for PacketCapture struct
 pub struct Uninitialized;
 /// Marker for PacketCapture struct
+#[derive(Debug)]
 pub struct Initialized;
 /// Marker for PacketCapture struct
 pub struct Started;
@@ -346,6 +99,7 @@ pub struct Completed;
 /// Basic PacketCapture type
 ///
 /// Marker as PhantomData allow compile-time checking of struct use
+#[derive(Debug)]
 pub struct PacketCapture<State> {
     interface: NetworkInterface,
     packets: Arc<Mutex<Vec<Vec<u8>>>>,
@@ -359,11 +113,31 @@ impl PacketCapture<Uninitialized> {
     /// Create a PacketCapture
     ///
     /// Takes an interface name and returns an Initialized PacketCapture
-    pub fn new(interface_name: &str) -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
+    pub fn new_from_interface(
+        interface_name: &str,
+    ) -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
         let interface = datalink::interfaces()
             .into_iter()
             .find(|iface| iface.name == interface_name)
-            .ok_or("Could not find interface")?;
+            .ok_or(format!("Could not find interface '{interface_name}'"))?;
+
+        Ok(PacketCapture {
+            interface,
+            packets: Arc::new(Mutex::new(vec![])),
+            results: Arc::new([]),
+            state: PhantomData,
+            stop_signal: Arc::new(AtomicBool::new(false)),
+        })
+    }
+
+    /// Create a PacketCapture
+    ///
+    /// Returns an Initialized PacketCapture with the default interface
+    pub fn new_with_default() -> Result<PacketCapture<Initialized>, Box<dyn Error>> {
+        let interface = datalink::interfaces()
+            .into_iter()
+            .find(|iface| iface.is_up() && !iface.is_loopback() && !iface.ips.is_empty())
+            .ok_or("Could not determine defauly interface")?;
 
         Ok(PacketCapture {
             interface,
