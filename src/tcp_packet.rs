@@ -162,7 +162,7 @@ impl<'a> Deref for TcpChallengeResponseCollection<'a> {
     }
 }
 
-impl<'a> DerefMut for TcpChallengeResponseCollection<'a> {
+impl DerefMut for TcpChallengeResponseCollection<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
