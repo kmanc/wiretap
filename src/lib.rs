@@ -87,13 +87,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 /// Marker for PacketCapture struct
+#[derive(Debug)]
 pub struct Uninitialized;
 /// Marker for PacketCapture struct
 #[derive(Debug)]
 pub struct Initialized;
 /// Marker for PacketCapture struct
+#[derive(Debug)]
 pub struct Started;
 /// Marker for PacketCapture struct
+#[derive(Debug)]
 pub struct Completed;
 
 /// Basic PacketCapture type
@@ -137,7 +140,7 @@ impl PacketCapture<Uninitialized> {
         let interface = datalink::interfaces()
             .into_iter()
             .find(|iface| iface.is_up() && !iface.is_loopback() && !iface.ips.is_empty())
-            .ok_or("Could not determine defauly interface")?;
+            .ok_or("Could not determine default interface")?;
 
         Ok(PacketCapture {
             interface,
