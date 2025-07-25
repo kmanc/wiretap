@@ -36,7 +36,9 @@
 //!
 //! ```rust,ignore
 //! use wiretap;
+//! use wiretap::Packet;
 //! use std::{thread, time};
+//! use std::ops::Deref;
 //! 
 //! 
 //! // Print the SrcIP:SrcPort --> DestIP:DestPort
@@ -44,9 +46,9 @@
 //!     // Make sure the payload represents an EthernetFrame
 //!     if let Some(ethernet_packet) = wiretap::EthernetFrame::new(&bytes) {
 //!         // Make sure the EthernetFrame payload represents an Ipv4Packet
-//!         if let Some(ipv4_packet) = wiretap::Ipv4Packet::new(ethernet_packet.payload()) {
+//!         if let Some(ipv4_packet) = wiretap::Ipv4Packet::new(ethernet_packet.deref().payload()) {
 //!             // Make sure the Ipv4Packet payload represents an TcpSegment
-//!             if let Some(tcp_packet) = wiretap::TcpSegment::new(ipv4_packet.payload()) {
+//!            if let Some(tcp_packet) = wiretap::TcpSegment::new(&ipv4_packet.payload()) {
 //!                 // Print out the interesting information
 //!                 println!("Packet: {}:{} --> {}:{}", ipv4_packet.get_source(), tcp_packet.get_source(), ipv4_packet.get_destination(), tcp_packet.get_destination() )
 //!             }
