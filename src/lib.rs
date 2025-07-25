@@ -37,22 +37,23 @@
 //! ```rust,ignore
 //! use wiretap;
 //! use std::{thread, time};
-//!
+//! 
+//! 
 //! // Print the SrcIP:SrcPort --> DestIP:DestPort
 //! fn print_to_from(bytes: Vec<u8>) {
-//!     // Make sure the payload represents an EthernetPacket
-//!     if let Some(ethernet_packet) = wiretap::EthernetPacket::new(&bytes) {
-//!         // Make sure the EthernetPacket payload represents an Ipv4Packet
-//!         if let Some(ipv4_packet) = Ipv4Packet::new(ethernet_packet.payload()) {
-//!             // Make sure the Ipv4Packet payload represents an TcpPacket
-//!             if let Some(tcp_packet) = TcpPacket::new(ipv4_packet.payload()) {
+//!     // Make sure the payload represents an EthernetFrame
+//!     if let Some(ethernet_packet) = wiretap::EthernetFrame::new(&bytes) {
+//!         // Make sure the EthernetFrame payload represents an Ipv4Packet
+//!         if let Some(ipv4_packet) = wiretap::Ipv4Packet::new(ethernet_packet.payload()) {
+//!             // Make sure the Ipv4Packet payload represents an TcpSegment
+//!             if let Some(tcp_packet) = wiretap::TcpSegment::new(ipv4_packet.payload()) {
 //!                 // Print out the interesting information
 //!                 println!("Packet: {}:{} --> {}:{}", ipv4_packet.get_source(), tcp_packet.get_source(), ipv4_packet.get_destination(), tcp_packet.get_destination() )
 //!             }
 //!         }
 //!     }
 //! }
-//!
+//! 
 //! fn main() {
 //!     // Create a new PacketCapture with the default interface
 //!     let pc = wiretap::PacketCapture::new_with_default().unwrap();
@@ -61,7 +62,7 @@
 //!     // Stuff happens
 //!     thread::sleep(time::Duration::from_secs(15));
 //!     // Stop the capture
-//!     started.stop_capture();
+//!     pc.stop_capture();
 //! }
 //! ```
 

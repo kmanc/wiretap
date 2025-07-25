@@ -22,6 +22,10 @@ impl<'a> Deref for EthernetFrame<'a> {
 }
 
 impl EthernetFrame<'_> {
+    pub fn new<'a>(packet: &'a [u8]) -> Option<EthernetFrame<'a>>{
+        pnet_EthernetPacket::new(packet).map(EthernetFrame::from)
+    }
+    
     pub fn create_clone<'a>(&self) -> EthernetFrame<'a> {
         EthernetFrame::from(pnet_EthernetPacket::owned(self.packet().to_vec()).unwrap())
     }

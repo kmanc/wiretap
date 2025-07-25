@@ -22,6 +22,10 @@ impl<'a> Deref for TcpSegment<'a> {
 }
 
 impl TcpSegment<'_> {
+    pub fn new<'a>(packet: &'a [u8]) -> Option<TcpSegment<'a>>{
+        pnet_TcpPacket::new(packet).map(TcpSegment::from)
+    }
+
     /// Return true if the TCP segment has a payload
     pub fn has_payload(&self) -> bool {
         !&self.payload().is_empty()

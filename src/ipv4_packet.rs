@@ -23,6 +23,10 @@ impl<'a> Deref for Ipv4Packet<'a> {
 }
 
 impl Ipv4Packet<'_> {
+    pub fn new<'a>(packet: &'a [u8]) -> Option<Ipv4Packet<'a>>{
+        pnet_Ipv4Packet::new(packet).map(Ipv4Packet::from)
+    }
+
     pub fn create_clone<'a>(&self) -> Ipv4Packet<'a> {
         Ipv4Packet::from(pnet_Ipv4Packet::owned(self.packet().to_vec()).unwrap())
     }
