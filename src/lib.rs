@@ -46,7 +46,7 @@
 //!     // Make sure the payload represents an EthernetFrame
 //!     if let Some(ethernet_packet) = wiretap::EthernetFrame::new(&bytes) {
 //!         // Make sure the EthernetFrame payload represents an Ipv4Packet
-//!         if let Some(ipv4_packet) = wiretap::Ipv4Packet::new(ethernet_packet.deref().payload()) {
+//!         if let Some(ipv4_packet) = wiretap::Ipv4Packet::new(ethernet_packet.payload()) {
 //!             // Make sure the Ipv4Packet payload represents an TcpSegment
 //!            if let Some(tcp_packet) = wiretap::TcpSegment::new(&ipv4_packet.payload()) {
 //!                 // Print out the interesting information
@@ -258,7 +258,7 @@ impl PacketCapture<Completed> {
     }
 
     /// Results returned as ethernet frames
-    pub fn results_as_ethernet(&self) -> EthernetFrameCollection {
+    pub fn results_as_ethernet(&self) -> EthernetFrameCollection<'_> {
         self.results_raw()
             .iter()
             .filter(|buf| pnet_EthernetPacket::new(buf).is_some())
@@ -267,7 +267,7 @@ impl PacketCapture<Completed> {
     }
 
     /// Results returned as ipv4 packets
-    pub fn results_as_ipv4(&self) -> Ipv4PacketCollection {
+    pub fn results_as_ipv4(&self) -> Ipv4PacketCollection<'_> {
         self.results_as_ethernet()
             .iter()
             .filter(|ethernet_frame| pnet_Ipv4Packet::new(ethernet_frame.payload()).is_some())
@@ -278,7 +278,7 @@ impl PacketCapture<Completed> {
     }
 
     /// Results returned as tcp segments
-    pub fn results_as_tcp(&self) -> TcpSegmentCollection {
+    pub fn results_as_tcp(&self) -> TcpSegmentCollection<'_> {
         self.results_as_ipv4()
             .iter()
             .filter(|ipv4_packet| pnet_TcpPacket::new(ipv4_packet.payload()).is_some())
