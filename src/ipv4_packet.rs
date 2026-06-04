@@ -59,4 +59,18 @@ impl<'a> Ipv4PacketCollection<'a> {
                 .collect::<Arc<[Ipv4Packet]>>(),
         )
     }
+
+    /// Keep only packets the given host **sourced** (its replies), dropping
+    /// packets merely addressed *to* it. Unlike [`Ipv4PacketCollection::filter_only_host`],
+    /// which matches source *or* destination, this is needed when reading a
+    /// property of the responding host itself — e.g. its initial TTL — where a
+    /// packet sent *to* the host would carry the sender's value instead.
+    pub fn filter_only_source(&'a self, host: Ipv4Addr) -> Ipv4PacketCollection<'a> {
+        Ipv4PacketCollection(
+            self.iter()
+                .filter(|p| p.get_source() == host)
+                .map(|p| p.create_clone())
+                .collect::<Arc<[Ipv4Packet]>>(),
+        )
+    }
 }
